@@ -5,6 +5,7 @@ use strict;
 
 use Carp;
 use Data::Dumper;
+use Params::Util qw( _ARRAYLIKE );
 use URI::Escape;
 use Text::Unaccent qw();
 
@@ -18,11 +19,11 @@ Email::ExactTarget::SubscriberOperations
 
 =head1 VERSION
 
-Version 1.2.0
+Version 1.2.1
 
 =cut
 
-our $VERSION = '1.2.0';
+our $VERSION = '1.2.1';
 
 
 =head1 SYNOPSIS
@@ -258,7 +259,7 @@ sub retrieve
 		unless defined( $soap_success ) && ( $soap_success eq 'OK' );
 	
 	confess "No objects returned."
-		unless scalar( @soap_object ) != 0;
+		if scalar( @soap_object ) == 0;
 	
 	# Turn the SOAP objects into known objects.
 	my @subscriber = ();
@@ -312,7 +313,7 @@ sub pull_list_subscriptions
 	
 	# Check data.
 	confess 'An arrayref of subscribers to pull list subscriptions for is required.'
-		unless defined( $subscribers ) && UNIVERSAL::isa( $subscribers, 'ARRAY' );
+		unless defined( $subscribers ) && defined( _ARRAYLIKE( $subscribers ) );
 	confess 'A non-empty arrayref of subscribers to pull list subscriptions for is required.'
 		if scalar( @$subscribers ) == 0;
 	
@@ -380,7 +381,7 @@ sub pull_list_subscriptions
 		);
 	}
 	
-	return undef;
+	return 1;
 }
 
 
@@ -413,7 +414,7 @@ sub _update_create
 	confess 'The "subscribers" parameter need to be set.'
 		unless defined( $subscribers );
 	confess 'The "subscribers" parameter must be an arrayref'
-		unless UNIVERSAL::isa( $subscribers, 'ARRAY' );
+		unless defined( _ARRAYLIKE( $subscribers ) );
 	confess 'The "subscribers" parameter must have at least one subscriber in the arrayref'
 		if scalar( @$subscribers ) == 0;
 	
@@ -529,7 +530,7 @@ sub _update_create
 		{
 			if ( defined( $subscriber->id() ) )
 			{
-				die 'The subscriber object ID was ' . $subscriber->id() . ' locally, '
+				confess 'The subscriber object ID was ' . $subscriber->id() . ' locally, '
 					. 'but ExactTarget now claims it is ' . $update_details->{'Object'}->{'ID'}
 					if $subscriber->id() != $update_details->{'Object'}->{'ID'};
 			}
@@ -594,7 +595,7 @@ sub _update_create
 		}
 	}
 	
-	return undef;
+	return 1;
 }
 
 
@@ -696,12 +697,12 @@ sub _soap_format_attributes
 
 =head1 AUTHOR
 
-Guillaume Aubert, C<< <guillaumeaubert at users.sourceforge.net> >>.
+Guillaume Aubert, C<< <aubertg at cpan.org> >>.
 
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-email-esp-exacttarget at rt.cpan.org>, or through
+Please report any bugs or feature requests to C<bug-email-exacttarget at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Email-ExactTarget>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
@@ -738,7 +739,9 @@ L<http://search.cpan.org/dist/Email-ExactTarget/>
 
 =head1 ACKNOWLEDGEMENTS
 
-Thanks to Geeknet, Inc. L<http://www.geek.net> for funding the initial development of this code!
+Thanks to ThinkGeek (L<http://www.thinkgeek.com/>) and its corporate overlords
+at Geeknet (L<http://www.geek.net/>), for footing the bill while I eat pizza
+and write code for them!
 
 
 =head1 COPYRIGHT & LICENSE

@@ -5,6 +5,8 @@ use strict;
 
 use Carp;
 use Data::Dumper;
+use Params::Util qw( _ARRAYLIKE _HASHLIKE );
+use Try::Tiny;
 use URI::Escape;
 
 
@@ -15,11 +17,11 @@ Email::ExactTarget::Subscriber
 
 =head1 VERSION
 
-Version 1.2.0
+Version 1.2.1
 
 =cut
 
-our $VERSION = '1.2.0';
+our $VERSION = '1.2.1';
 
 
 =head1 SYNOPSIS
@@ -91,7 +93,7 @@ Email::ExactTarget::SubscriberOperations.
 
 =cut
 
-sub set
+sub set ## no critic (NamingConventions::ProhibitAmbiguousNames)
 {
 	my ( $self, $attributes, %args ) = @_;
 	my $is_live = delete( $args{'is_live'} ) || 0;
@@ -101,6 +103,8 @@ sub set
 	{
 		$self->{ $storage_key }->{ $name } = $value;
 	}
+	
+	return 1;
 }
 
 
@@ -159,7 +163,7 @@ sub get
 	$is_live = 1 unless defined( $is_live );
 	
 	confess 'An attribute name is required to retrieve the corresponding value'
-		unless defined( $attribute ) && ( $attribute ne '' );
+		if !defined( $attribute ) || ( $attribute eq '' );
 	
 	my $storage_key = $is_live ? 'attributes' : 'staged_attributes';
 	
@@ -222,12 +226,12 @@ sub apply_staged_attributes
 	my ( $self, $fields ) = @_;
 	
 	confess 'The first parameter needs to be an arrayref of fields to apply'
-		unless defined $fields && UNIVERSAL::isa( $fields, 'ARRAY' );
+		unless defined( $fields ) && defined( _ARRAYLIKE( $fields ) );
 	
 	my $errors_count = 0;
 	foreach my $field ( @$fields )
 	{
-		eval
+		try
 		{
 			$self->set(
 				{
@@ -235,17 +239,14 @@ sub apply_staged_attributes
 				},
 				'is_live' => 1,
 			);
-		};
-		
-		if ( !$@ )
-		{
+			
 			delete( $self->{'staged_attributes'}->{ $field } );
 		}
-		else
+		catch
 		{
 			$errors_count++;
 			$self->add_error( "Failed to apply the staged values for the following attribute: $field." );
-		}
+		};
 	}
 	
 	return $errors_count > 0 ? 0 : 1;
@@ -286,7 +287,7 @@ sub set_lists_status
 			unless defined( $status );
 		
 		confess "The status >$status< for list ID >$list_id< is incorrect"
-			unless $status =~ m/^(Active|Unsubscribed)$/;
+			unless $status =~ m/^(?:Active|Unsubscribed)$/;
 	}
 	
 	# If all the status passed are valid, we can now proceed with updating the
@@ -296,6 +297,8 @@ sub set_lists_status
 	{
 		$self->{ $storage_key }->{ $list_id } = $status;
 	}
+	
+	return 1;
 }
 
 
@@ -355,12 +358,12 @@ sub apply_staged_lists_status
 	my ( $self, $lists_status ) = @_;
 	
 	confess 'The first parameter needs to be an hashref of list IDs and statuses to apply'
-		unless defined( $lists_status ) && UNIVERSAL::isa( $lists_status, 'HASH' );
+		unless defined( $lists_status ) && defined( _HASHLIKE( $lists_status ) );
 	
 	my $errors_count = 0;
 	while ( my ( $list_id, $status ) = each( %$lists_status ) )
 	{
-		eval
+		try
 		{
 			$self->set_lists_status(
 				{
@@ -368,17 +371,14 @@ sub apply_staged_lists_status
 				},
 				'is_live' => 1,
 			);
-		};
-		
-		if ( !$@ )
-		{
+			
 			delete( $self->{'staged_lists'}->{ $list_id } );
 		}
-		else
+		catch
 		{
 			$errors_count++;
 			$self->add_error( "Failed to apply the staged list statuses for the following list ID: $list_id." );
-		}
+		};
 	}
 	
 	return $errors_count > 0 ? 0 : 1;
@@ -397,9 +397,9 @@ sub add_error
 {
 	my ( $self, $error ) = @_;
 	
-	unless( defined( $error ) && ( $error ne '' ) )
+	if ( !defined( $error ) || ( $error eq '' ) )
 	{
-		warn 'No error text specified';
+		carp 'No error text specified';
 		return 0;
 	}
 	
@@ -452,7 +452,7 @@ Guillaume Aubert, C<< <aubertg at cpan.org> >>.
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-email-esp-exacttarget at rt.cpan.org>, or through
+Please report any bugs or feature requests to C<bug-email-exacttarget at rt.cpan.org>, or through
 the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Email-ExactTarget>.  I will be notified, and then you'll
 automatically be notified of progress on your bug as I make changes.
 
@@ -489,7 +489,9 @@ L<http://search.cpan.org/dist/Email-ExactTarget/>
 
 =head1 ACKNOWLEDGEMENTS
 
-Thanks to Geeknet, Inc. L<http://www.geek.net> for funding the initial development of this code!
+Thanks to ThinkGeek (L<http://www.thinkgeek.com/>) and its corporate overlords
+at Geeknet (L<http://www.geek.net/>), for footing the bill while I eat pizza
+and write code for them!
 
 
 =head1 COPYRIGHT & LICENSE

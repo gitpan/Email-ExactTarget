@@ -20,11 +20,11 @@ Email::ExactTarget - Interface to ExactTarget's API.
 
 =head1 VERSION
 
-Version 1.2.0
+Version 1.2.1
 
 =cut
 
-our $VERSION = '1.2.0';
+our $VERSION = '1.2.1';
 
 our $ENDPOINT_LIVE = 'https://webservice.exacttarget.com/Service.asmx';
 
@@ -93,10 +93,10 @@ sub new
 	# Check for mandatory parameters
 	foreach my $arg ( qw( username password all_subscribers_list_id ) )
 	{
-		die "Argument '$arg' is needed to create the Email::ExactTarget object"
-			unless defined( $args{$arg} ) && ( $args{$arg} ne '' );
+		croak "Argument '$arg' is needed to create the Email::ExactTarget object"
+			if !defined( $args{$arg} ) || ( $args{$arg} eq '' );
 	}
-	die 'The ID of the "All Subscribers List" must be an integer'
+	croak 'The ID of the "All Subscribers List" must be an integer'
 		unless $args{'all_subscribers_list_id'} =~ m/^\d+$/;
 	
 	#Defaults.
@@ -254,7 +254,7 @@ sub version_info
 		'arguments' => $soap_args,
 	);
 	
-	die $soap_response->fault()
+	croak $soap_response->fault()
 		if defined( $soap_response->fault() );
 	
 	return $soap_response->result();
@@ -289,9 +289,9 @@ sub get_system_status
 	my $soap_results = $soap_response->result();
 	
 	# Check for errors.
-	die $soap_response->fault()
+	croak $soap_response->fault()
 		if defined( $soap_response->fault() );
-	die 'No results found.'
+	croak 'No results found.'
 		unless defined( $soap_results->{'Result'} );
 	
 	return $soap_results->{'Result'};
@@ -322,10 +322,10 @@ sub soap_call
 		: $ENDPOINT_LIVE;
 	
 	# Check the parameters.
-	die 'You must define a SOAP action'
-		unless defined( $args{'action'} ) && ( $args{'action'} ne '' );
-	die 'You must define a SOAP method'
-		unless defined( $args{'method'} ) && ( $args{'method'} ne '' );
+	confess 'You must define a SOAP action'
+		if !defined( $args{'action'} ) || ( $args{'action'} eq '' );
+	confess 'You must define a SOAP method'
+		if !defined( $args{'method'} ) || ( $args{'method'} eq '' );
 	$args{'arguments'} ||= [];
 	
 	# Do not forget to specify the soapaction (on_action), you will find it in the
@@ -476,7 +476,7 @@ Guillaume Aubert, C<< <aubertg at cpan.org> >>.
 
 =head1 BUGS
 
-Please report any bugs or feature requests to C<bug-email-esp-exacttarget at rt.cpan.org>,
+Please report any bugs or feature requests to C<bug-email-exacttarget at rt.cpan.org>,
 or through the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Email-ExactTarget>.
 I will be notified, and then you'll automatically be notified of progress on
 your bug as I make changes.
@@ -514,7 +514,9 @@ L<http://search.cpan.org/dist/Email-ExactTarget/>
 
 =head1 ACKNOWLEDGEMENTS
 
-Thanks to Geeknet, Inc. L<http://www.geek.net> for funding the initial development of this code!
+Thanks to ThinkGeek (L<http://www.thinkgeek.com/>) and its corporate overlords
+at Geeknet (L<http://www.geek.net/>), for footing the bill while I eat pizza
+and write code for them!
 
 
 =head1 COPYRIGHT & LICENSE

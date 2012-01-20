@@ -8,10 +8,12 @@ build_requires:
   HTML::Entities: 0
   HTTP::Request: 0
   LWP::UserAgent: 0
+  Params::Util: 0
   SOAP::Lite: 0.71
   Test::Deep: 0
   Test::More: 0.94
   Text::Unaccent: 0
+  Try::Tiny: 0
   URI::Escape: 0
 configure_requires:
   Module::Build: 0.36
@@ -24,15 +26,15 @@ name: Email-ExactTarget
 provides:
   Email::ExactTarget:
     file: lib/Email/ExactTarget.pm
-    version: v1.2.0
+    version: v1.2.1
   Email::ExactTarget::Subscriber:
     file: lib/Email/ExactTarget/Subscriber.pm
-    version: v1.2.0
+    version: v1.2.1
   Email::ExactTarget::SubscriberOperations:
     file: lib/Email/ExactTarget/SubscriberOperations.pm
-    version: v1.2.0
+    version: v1.2.1
 requires:
   perl: 5.006
 resources:
   license: http://opensource.org/licenses/artistic-license.php
-version: v1.2.0
+version: v1.2.1

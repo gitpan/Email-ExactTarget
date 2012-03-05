@@ -19,11 +19,11 @@ Email::ExactTarget::SubscriberOperations
 
 =head1 VERSION
 
-Version 1.2.1
+Version 1.3.0
 
 =cut
 
-our $VERSION = '1.2.1';
+our $VERSION = '1.3.0';
 
 
 =head1 SYNOPSIS
@@ -258,9 +258,6 @@ sub retrieve
 	confess "The SOAP status is not 'OK'."
 		unless defined( $soap_success ) && ( $soap_success eq 'OK' );
 	
-	confess "No objects returned."
-		if scalar( @soap_object ) == 0;
-	
 	# Turn the SOAP objects into known objects.
 	my @subscriber = ();
 	foreach my $soap_object ( @soap_object )
@@ -385,6 +382,145 @@ sub pull_list_subscriptions
 }
 
 
+=head2 delete_permanently()
+
+Deletes permanently the subscribers in the set passed as parameter from
+ExactTarget's database.
+
+Note that this operation cannot be reversed. If you want to keep the subscribers
+but make sure emails are never sent to them, look into adding them to the
+"blacklist" list instead.
+
+	my $all_subscribers_removed = $subscriber_operations->remove(
+		\@subscribers
+	);
+	
+	unless ( $all_subscribers_removed )
+	{
+		foreach my $subscriber ( @subscribers )
+		{
+			my $errors = $subscriber->errors();
+			if ( defined( $errors ) )
+			{
+				# We failed to delete the subscriber.
+				print 'Failed to update subscriber ', $subscriber->id(), ": ", Dumper( $errors );
+			}
+			else
+			{
+				# Success.
+			}
+		}
+	}
+
+=cut
+
+sub delete_permanently
+{
+	my ( $self, $subscribers ) = @_;
+	
+	# Verify parameters.
+	confess 'The "subscribers" parameter need to be set.'
+		unless defined( $subscribers );
+	confess 'The "subscribers" parameter must be an arrayref'
+		unless defined( _ARRAYLIKE( $subscribers ) );
+	confess 'The "subscribers" parameter must have at least one subscriber in the arrayref'
+		if scalar( @$subscribers ) == 0;
+	
+	# Shortcuts.
+	my $exact_target = $self->exact_target() || confess 'Email::ExactTarget object is not defined';
+	my $verbose = $exact_target->verbose();
+	
+	# Prepare SOAP content.
+	my @soap_data = ();
+	
+	foreach my $subscriber ( @$subscribers )
+	{
+		# Reuse the existing identifiers.
+		my @object =
+		(
+			SOAP::Data->name(
+				'EmailAddress' => $subscriber->get( 'Email Address', 'is_live' => 1 ),
+			),
+			SOAP::Data->name(
+				'ID' => $subscriber->id(),
+			),
+		);
+		
+		# Create the subscriber block in the SOAP message.
+		push(
+			@soap_data,
+			SOAP::Data->name(
+				'Objects' => \SOAP::Data->value(
+					@object
+				),
+			)->attr( { 'xsi:type' => 'Subscriber' } ),
+		)
+	}
+	
+	# Get Exact Target's reply.
+	my $soap_response = $exact_target->soap_call(
+		'action'    => 'Delete',
+		'method'    => 'DeleteRequest',
+		'arguments' =>
+		[
+			SOAP::Data->value(
+				@soap_data
+			)
+		],
+	);
+	
+	my @soap_params_out  = $soap_response->paramsall();
+	my $soap_success = pop( @soap_params_out );
+	my $soap_request_id = pop( @soap_params_out );
+	
+	# Check for errors.
+	confess Dumper( $soap_response->fault() )
+		if defined( $soap_response->fault() );
+	
+	confess 'The SOAP status is not >OK< - ' . Dumper( $soap_response->paramsall() )
+		unless defined( $soap_success ) && ( $soap_success eq 'OK' );
+	
+	# Parse the output.
+	my $deletion_results = {};
+	foreach my $param_out ( @soap_params_out )
+	{
+		$deletion_results->{ $param_out->{'OrdinalID'} } =
+		{
+			'StatusCode'    => $param_out->{'StatusCode'},
+			'StatusMessage' => $param_out->{'StatusMessage'},
+		};
+	}
+	
+	# Check the detail of the response for each object, and update it accordingly.
+	my $errors_found = 0;
+	for ( my $count = 0; $count < scalar( @$subscribers ); $count++ )
+	{
+		my $subscriber = $subscribers->[ $count ];
+		my $deletion_result = $deletion_results->{ $count };
+		
+		# Check the individual status code to determine if the update for that
+		# subscriber was successful.
+		if ( $deletion_result->{'StatusCode'} ne 'OK' )
+		{
+			$errors_found = 1;
+			$subscriber->add_error( $deletion_result->{'StatusMessage'} );
+			next;
+		}
+		
+		# The subscriber has been deleted in ExactTarget's database, flag it locally
+		# as deleted to prevent any further operation on this object.
+		unless ( $subscriber->flag_as_deleted_permanently() )
+		{
+			$errors_found = 1;
+			$subscriber->add_error( "Deleted in ExactTarget's database, but failed to flag locally the object as deleted." );
+			next;
+		}
+	}
+	
+	return !$errors_found;
+}
+
+
 =head1 INTERNAL FUNCTIONS
 
 =head2 _update_create()
@@ -421,6 +557,15 @@ sub _update_create
 	# Shortcuts.
 	my $exact_target = $self->exact_target() || confess 'Email::ExactTarget object is not defined';
 	my $verbose = $exact_target->verbose();
+	
+	# Make sure that the subscribers haven't been flagged locally as deleted.
+	foreach my $subscriber ( @$subscribers )
+	{
+		next unless $subscriber->is_deleted_permanently();
+		
+		confess 'Cannot perform operations on an object flagged as permanently deleted'
+			. ( $verbose ? ': ' . Dumper( $subscriber) : '.' );
+	}
 	
 	# Prepare SOAP content.
 	my @soap_data = ();
@@ -478,18 +623,16 @@ sub _update_create
 		)
 	}
 	
-	my $soap_args =
-	[
-		SOAP::Data->value(
-			@soap_data
-		)
-	];
-	
 	# Get Exact Target's reply.
 	my $soap_response = $exact_target->soap_call(
 		'action'    => $args{'soap_action'},
 		'method'    => $args{'soap_method'},
-		'arguments' => $soap_args,
+		'arguments' =>
+		[
+			SOAP::Data->value(
+				@soap_data
+			)
+		],
 	);
 	
 	my @soap_params_out  = $soap_response->paramsall();
@@ -543,15 +686,10 @@ sub _update_create
 		# Apply the staged attributes that ExactTarget reports as updated.
 		if ( defined ( $update_details->{'Object'}->{'Attributes'} ) )
 		{
-			my $attributes;
-			if ( ref( $update_details->{'Object'}->{'Attributes'} ) eq 'ARRAY' )
-			{
-				$attributes = $update_details->{'Object'}->{'Attributes'};
-			}
-			else
-			{
-				$attributes = [ $update_details->{'Object'}->{'Attributes'} ];
-			}
+			my $attributes = defined( _ARRAYLIKE( $update_details->{'Object'}->{'Attributes'} ) )
+				? $update_details->{'Object'}->{'Attributes'}
+				: [ $update_details->{'Object'}->{'Attributes'} ];
+			
 			$subscriber->apply_staged_attributes(
 				[ map { $_->{'Name'} } @$attributes ]
 			);
@@ -560,15 +698,9 @@ sub _update_create
 		# Apply the staged list status updates.
 		if ( defined ( $update_details->{'Object'}->{'Lists'} ) )
 		{
-			my $lists;
-			if ( ref( $update_details->{'Object'}->{'Lists'} ) eq 'ARRAY' )
-			{
-				$lists = $update_details->{'Object'}->{'Lists'};
-			}
-			else
-			{
-				$lists = [ $update_details->{'Object'}->{'Lists'} ];
-			}
+			my $lists = defined( _ARRAYLIKE( $update_details->{'Object'}->{'Lists'} ) )
+				? $update_details->{'Object'}->{'Lists'}
+				: [ $update_details->{'Object'}->{'Lists'} ];
 			
 			$subscriber->apply_staged_lists_status(
 				{

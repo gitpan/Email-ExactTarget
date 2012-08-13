@@ -24,11 +24,11 @@ Email::ExactTarget - Interface to ExactTarget's API.
 
 =head1 VERSION
 
-Version 1.3.1
+Version 1.3.2
 
 =cut
 
-our $VERSION = '1.3.1';
+our $VERSION = '1.3.2';
 
 our $ENDPOINT_LIVE = 'https://webservice.exacttarget.com/Service.asmx';
 
@@ -409,7 +409,7 @@ sub soap_call
 By default, only basic tests that do not require a connection to ExactTarget's
 platform are run in t/.
 
-To run the developper tests, you will need todo the following:
+To run the developer tests, you will need to do the following:
 
 =over 4
 

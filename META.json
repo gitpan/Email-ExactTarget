@@ -16,18 +16,9 @@
    "prereqs" : {
       "build" : {
          "requires" : {
-            "Carp" : "0",
-            "Data::Dumper" : "0",
-            "HTML::Entities" : "0",
-            "HTTP::Request" : "0",
-            "LWP::UserAgent" : "0",
-            "Params::Util" : "0",
-            "SOAP::Lite" : "0.71",
             "Test::Deep" : "0",
-            "Test::More" : "0.94",
-            "Text::Unaccent" : "0",
-            "Try::Tiny" : "0",
-            "URI::Escape" : "0"
+            "Test::Exception" : "0",
+            "Test::More" : "0.94"
          }
       },
       "configure" : {
@@ -37,6 +28,16 @@
       },
       "runtime" : {
          "requires" : {
+            "Carp" : "0",
+            "Data::Dumper" : "0",
+            "Data::Validate::Type" : "0",
+            "HTML::Entities" : "0",
+            "HTTP::Request" : "0",
+            "LWP::UserAgent" : "0",
+            "SOAP::Lite" : "0.71",
+            "Text::Unaccent" : "0",
+            "Try::Tiny" : "0",
+            "URI::Escape" : "0",
             "perl" : "5.006"
          }
       }
@@ -44,15 +45,15 @@
    "provides" : {
       "Email::ExactTarget" : {
          "file" : "lib/Email/ExactTarget.pm",
-         "version" : "v1.3.1"
+         "version" : "v1.3.2"
       },
       "Email::ExactTarget::Subscriber" : {
          "file" : "lib/Email/ExactTarget/Subscriber.pm",
-         "version" : "v1.3.1"
+         "version" : "v1.3.2"
       },
       "Email::ExactTarget::SubscriberOperations" : {
          "file" : "lib/Email/ExactTarget/SubscriberOperations.pm",
-         "version" : "v1.3.1"
+         "version" : "v1.3.2"
       }
    },
    "release_status" : "stable",
@@ -62,11 +63,11 @@
       },
       "homepage" : "https://metacpan.org/release/Email-ExactTarget",
       "license" : [
-         "http://opensource.org/licenses/artistic-license.php"
+         "http://www.perlfoundation.org/artistic_license_1_0"
       ],
       "repository" : {
          "url" : "https://sourceforge.net/p/exacttargetperl/code"
       }
    },
-   "version" : "v1.3.1"
+   "version" : "v1.3.2"
 }

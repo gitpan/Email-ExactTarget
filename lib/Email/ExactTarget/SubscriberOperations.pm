@@ -23,11 +23,11 @@ Email::ExactTarget::SubscriberOperations
 
 =head1 VERSION
 
-Version 1.3.2
+Version 1.3.3
 
 =cut
 
-our $VERSION = '1.3.2';
+our $VERSION = '1.3.3';
 
 
 =head1 SYNOPSIS
@@ -803,10 +803,15 @@ sub _soap_format_attributes
 	
 	if ( $self->exact_target()->unaccent() )
 	{
-		map
+		foreach my $attribute ( keys %$attributes )
 		{
-			$attributes->{$_} = Text::Unaccent::unac_string( 'latin1', $attributes->{$_} )
-		} keys %$attributes;
+			next if !defined( $attributes->{ $attribute } );
+			
+			$attributes->{ $attribute } = Text::Unaccent::unac_string(
+				'latin1',
+				$attributes->{ $attribute },
+			);
+		}
 	}
 	
 	my @attribute = ();

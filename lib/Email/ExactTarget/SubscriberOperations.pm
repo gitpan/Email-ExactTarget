@@ -23,11 +23,11 @@ Email::ExactTarget::SubscriberOperations
 
 =head1 VERSION
 
-Version 1.3.3
+Version 1.3.4
 
 =cut
 
-our $VERSION = '1.3.3';
+our $VERSION = '1.3.4';
 
 
 =head1 SYNOPSIS
@@ -204,16 +204,23 @@ unique identifiers passed as parameter.
 sub retrieve
 {
 	my ( $self, %args ) = @_;
-
+	my $email = delete( $args{'email'} );
+	
 	# Check parameters.
 	confess 'Emails identifying the subscribers to retrieve were not passed.'
-		if !defined( $args{'email'} );
+		if !defined( $email );
 	
 	confess "The 'email' parameter must be an arrayref"
-		if !Data::Validate::Type::is_arrayref( $args{'email'} );
+		if !Data::Validate::Type::is_arrayref( $email );
 	
 	confess 'Emails identifying the subscribers to retrieve were not passed.'
-		unless scalar( @{ $args{'email'} } );
+		if scalar( @$email ) == 0;
+	
+	# The 'IN' operator in ExactTarget requires at least 2 emails.
+	# If only one email is passed, we're simply going to send it twice and get one
+	# result back.
+	$email = [ $email->[0], $email->[0] ]
+		if scalar( @$email ) == 1;
 	
 	# Shortcuts.
 	my $exact_target = $self->exact_target() || confess 'Email::ExactTarget object is not defined';
@@ -239,7 +246,7 @@ sub retrieve
 							SimpleOperator => 'IN',
 						),
 						SOAP::Data->name(
-							Value => @{ $args{'email'} },
+							Value => @$email,
 						),
 					),
 				)->attr( { 'xsi:type' => 'SimpleFilterPart' } ),
@@ -531,17 +538,21 @@ sub delete_permanently
 
 Internal. Updates or create a set of subscribers.
 
-	$subscriber_operations->_update_create(
+	my $batch_success = $subscriber_operations->_update_create(
 		'subscribers' => \@subscriber,
 		'soap_action' => 'Update',
 		'soap_method' => 'UpdateRequest',
 	);
 
-	$subscriber_operations->_update_create(
+	my $batch_success = $subscriber_operations->_update_create(
 		'subscribers' => \@subscriber,
 		'soap_action' => 'Create',
 		'soap_method' => 'CreateRequest',
 	);
+
+Note $batch_success will be true only if all the elements have been updated
+successfully. When it is false, you should loop through @subscriber and use the
+C<errors()> method on each object to find which one(s) failed.
 
 =cut
 
@@ -647,8 +658,9 @@ sub _update_create
 	confess Dumper( $soap_response->fault() )
 		if defined( $soap_response->fault() );
 	
-	confess 'The SOAP status is not >OK< - ' . Dumper( $soap_response->paramsall() )
-		unless defined( $soap_success ) && ( $soap_success eq 'OK' );
+	my $batch_success = defined( $soap_success ) && ( $soap_success eq 'OK' )
+		? 1
+		: 0;
 	
 	# Check the detail of the response for each object, and update accordingly.
 	my %update_details = ();
@@ -731,7 +743,7 @@ sub _update_create
 		}
 	}
 	
-	return 1;
+	return $batch_success;
 }
 
 

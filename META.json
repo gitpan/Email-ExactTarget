@@ -6,7 +6,7 @@
    "dynamic_config" : 1,
    "generated_by" : "Module::Build version 0.4003, CPAN::Meta::Converter version 2.120921",
    "license" : [
-      "artistic_1"
+      "open_source"
    ],
    "meta-spec" : {
       "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
@@ -45,15 +45,15 @@
    "provides" : {
       "Email::ExactTarget" : {
          "file" : "lib/Email/ExactTarget.pm",
-         "version" : "v1.3.5"
+         "version" : "v1.3.6"
       },
       "Email::ExactTarget::Subscriber" : {
          "file" : "lib/Email/ExactTarget/Subscriber.pm",
-         "version" : "v1.3.5"
+         "version" : "v1.3.6"
       },
       "Email::ExactTarget::SubscriberOperations" : {
          "file" : "lib/Email/ExactTarget/SubscriberOperations.pm",
-         "version" : "v1.3.5"
+         "version" : "v1.3.6"
       }
    },
    "release_status" : "stable",
@@ -63,11 +63,11 @@
       },
       "homepage" : "https://metacpan.org/release/Email-ExactTarget",
       "license" : [
-         "http://www.perlfoundation.org/artistic_license_1_0"
+         "http://www.gnu.org/licenses/gpl-3.0.txt"
       ],
       "repository" : {
          "url" : "https://github.com/guillaumeaubert/Email-ExactTarget"
       }
    },
-   "version" : "v1.3.5"
+   "version" : "v1.3.6"
 }

@@ -80,7 +80,7 @@ foreach my $email ( sort keys %$changes )
 		'is_live' => 0,
 	);
 }
-$subscribers->{'john.doe@example.com'}->set(
+$subscribers->{'john.doe@example.com'}->set_attributes(
 	{
 		'First Name' => 'Guillaume',
 	},
@@ -187,7 +187,7 @@ sub retrieve_subscribers
 	{
 		map
 		{
-			$_->get('Email Address') => $_
+			$_->get_attribute('Email Address') => $_
 		}
 		@$subscribers
 	};

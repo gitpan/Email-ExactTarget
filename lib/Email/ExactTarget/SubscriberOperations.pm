@@ -23,11 +23,11 @@ Email::ExactTarget::SubscriberOperations
 
 =head1 VERSION
 
-Version 1.3.6
+Version 1.4.0
 
 =cut
 
-our $VERSION = '1.3.6';
+our $VERSION = '1.4.0';
 
 
 =head1 SYNOPSIS
@@ -235,7 +235,7 @@ sub retrieve
 					ObjectType => 'Subscriber',
 				),
 				SOAP::Data->name(
-					Properties => 'ID',
+					Properties => ( 'ID', 'EmailTypePreference', 'EmailAddress' ),
 				),
 				SOAP::Data->name(
 					'Filter' => \SOAP::Data->value(
@@ -283,7 +283,14 @@ sub retrieve
 		# Create a Subscriber object and fill it.
 		my $subscriber = Email::ExactTarget::Subscriber->new();
 		$subscriber->id( $soap_object->{'ID'} );
-		$subscriber->set(
+		$subscriber->set_properties(
+			{
+				map { $_ => $soap_object->{ $_ } }
+					qw( EmailTypePreference EmailAddress )
+			},
+			'is_live' => 1,
+		);
+		$subscriber->set_attributes(
 			{
 				map
 				{
@@ -347,7 +354,7 @@ sub pull_list_subscriptions
 							# 'IN' requires at least _two_ values to be passed or it will confess.
 							# Since the webservice deduplicates the values passed, just pass
 							# the first object twice.
-							Value => ( map { $_->get('Email Address') } ( @$subscribers, $subscribers->[0] ) ),
+							Value => ( map { $_->get_attribute('Email Address') } ( @$subscribers, $subscribers->[0] ) ),
 						),
 					),
 				)->attr( { 'xsi:type' => 'SimpleFilterPart' } ),
@@ -375,7 +382,7 @@ sub pull_list_subscriptions
 	my $subscribers_by_email =
 	{
 		map
-			{ $_->get('Email Address') => $_ }
+			{ $_->get_attribute('Email Address') => $_ }
 			@$subscribers
 	};
 	
@@ -450,7 +457,7 @@ sub delete_permanently
 		my @object =
 		(
 			SOAP::Data->name(
-				'EmailAddress' => $subscriber->get( 'Email Address', 'is_live' => 1 ),
+				'EmailAddress' => $subscriber->get_attribute( 'Email Address', 'is_live' => 1 ),
 			),
 			SOAP::Data->name(
 				'ID' => $subscriber->id(),
@@ -599,7 +606,7 @@ sub _update_create
 			push(
 				@object,
 				SOAP::Data->name(
-					'EmailAddress' => $subscriber->get( 'Email Address', 'is_live' => 0 ),
+					'EmailAddress' => $subscriber->get_attribute( 'Email Address', 'is_live' => 0 ),
 				),
 			);
 		}
@@ -609,11 +616,23 @@ sub _update_create
 			push(
 				@object,
 				SOAP::Data->name(
-					'EmailAddress' => $subscriber->get( 'Email Address', 'is_live' => 1 ),
+					'EmailAddress' => $subscriber->get_attribute( 'Email Address', 'is_live' => 1 ),
 				),
 				SOAP::Data->name(
 					'ID' => $subscriber->id(),
 				),
+			);
+		}
+		
+		# Add the staged properties for this subscriber.
+		my $properties = $subscriber->get_properties( is_live => 0 );
+		foreach my $name ( keys %$properties )
+		{
+			push(
+				@object,
+				SOAP::Data->name(
+					$name => $properties->{ $name }
+				)
 			);
 		}
 		
@@ -635,7 +654,7 @@ sub _update_create
 					@object
 				),
 			)->attr( { 'xsi:type' => 'Subscriber' } ),
-		)
+		);
 	}
 	
 	# Get Exact Target's reply.
@@ -671,8 +690,8 @@ sub _update_create
 	foreach my $subscriber ( @$subscribers )
 	{
 		my $email = $args{'soap_action'} eq 'Create'
-			? $subscriber->get('Email Address', is_live => 0 )
-			: $subscriber->get('Email Address');
+			? $subscriber->get_attribute('Email Address', is_live => 0 )
+			: $subscriber->get_attribute('Email Address');
 
 		my $update_details = $update_details{ $email };
 

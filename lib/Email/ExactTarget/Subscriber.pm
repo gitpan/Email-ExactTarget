@@ -21,11 +21,11 @@ Email::ExactTarget::Subscriber
 
 =head1 VERSION
 
-Version 1.4.0
+Version 1.4.1
 
 =cut
 
-our $VERSION = '1.4.0';
+our $VERSION = '1.4.1';
 
 
 =head1 SYNOPSIS
@@ -123,7 +123,7 @@ Retrieve a hashref containing all the attributes of the current object.
 
 By default, it retrieves the live data (i.e., attributes synchronized with
 ExactTarget). If you want to retrieve the staged data, you can set
-I<is_live => 0> in the parameters.
+I<is_live> to 0 in the parameters.
 
 	# Retrieve staged attributes (i.e., not synchronized yet with ExactTarget).
 	my $attributes = $subscriber->get_attributes( 'is_live' => 0 );
@@ -283,13 +283,13 @@ sub apply_staged_attributes
 
 =head1 MANAGING LIST SUBSCRIPTIONS
 
-=head2 get_lists_status ()
+=head2 get_lists_status()
 
 Returns the subscription status for the lists on the current object.
 
 By default, it retrieves the live data (i.e., list subscriptions synchronized
 with ExactTarget). If you want to retrieve the staged data, you can set
-I<is_live => 0> in the parameters.
+I<is_live> to 0 in the parameters.
 
 This function takes one mandatory parameter, which indicates whether you want
 the staged list information (lists subscribed to locally but not yet
@@ -356,8 +356,10 @@ sub set_lists_status
 		confess "The status for list ID >$list_id< must be defined"
 			unless defined( $status );
 		
+		# See the following page for an explanation of the valid statuses:
+		# http://wiki.memberlandingpages.com/System_Guides/Bounce_Mail_Management#Subscriber_Status
 		confess "The status >$status< for list ID >$list_id< is incorrect"
-			unless $status =~ m/^(?:Active|Unsubscribed)$/;
+			unless $status =~ m/^(?:Active|Unsubscribed|Held|Bounced|Deleted)$/x;
 	}
 	
 	# If all the status passed are valid, we can now proceed with updating the
@@ -429,7 +431,7 @@ Retrieve a hashref containing all the properties of the current object.
 
 By default, it retrieves the live data (i.e., properties synchronized with
 ExactTarget). If you want to retrieve the staged data, you can set
-I<is_live => 0> in the parameters.
+I<is_live> to 0 in the parameters.
 
 	# Retrieve staged properties (i.e., not synchronized yet with ExactTarget).
 	my $properties = $subscriber->get_properties( 'is_live' => 0 );

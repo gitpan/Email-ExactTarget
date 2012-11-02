@@ -23,11 +23,11 @@ Email::ExactTarget::SubscriberOperations
 
 =head1 VERSION
 
-Version 1.4.1
+Version 1.5.0
 
 =cut
 
-our $VERSION = '1.4.1';
+our $VERSION = '1.5.0';
 
 
 =head1 SYNOPSIS
@@ -266,7 +266,7 @@ sub retrieve
 	confess Dumper( $soap_response->fault() )
 		if defined( $soap_response->fault() );
 	
-	confess "The SOAP status is not 'OK'."
+	confess "The SOAP reply status is '$soap_success', not 'OK'"
 		unless defined( $soap_success ) && ( $soap_success eq 'OK' );
 	
 	# Turn the SOAP objects into known objects.
@@ -312,28 +312,116 @@ sub retrieve
 Pulls from ExactTarget's database the list subscriptions for the arrayref of
 subscribers passed as parameter.
 
+	# Pull list subscriptions.
 	$subscriber_operations->pull_list_subscriptions(
 		$subscribers
+	);
+	
+	# Pull list subscriptions only for the specified lists.
+	# This is helpful if you have a lot of legacy/historical lists you
+	# don't actually sync with, as it cuts down on the number of results
+	# and the time it takes to retrieve them.
+	$subscriber_operations->pull_list_subscriptions(
+		$subscribers,
+		list_ids => \@list_ids,
 	);
 
 =cut
 
 sub pull_list_subscriptions
 {
-	my ( $self, $subscribers ) = @_;
+	my ( $self, $subscribers, %args ) = @_;
+	my $list_ids = delete( $args{'list_ids'} );
+	croak 'Unrecognized arguments: ' . join( ', ', keys %args )
+		if scalar( keys %args ) != 0;
+	
+	# Verify arguments.
+	confess 'An arrayref of subscribers to pull list subscriptions for is required.'
+		if !Data::Validate::Type::is_arrayref( $subscribers );
+	confess 'A non-empty arrayref of subscribers to pull list subscriptions for is required.'
+		if scalar( @$subscribers ) == 0;
+	if ( defined( $list_ids ) )
+	{
+		confess 'When defined, the argument "list_ids" must be an arrayref'
+			if !Data::Validate::Type::is_arrayref( $list_ids );
+		confess 'When defined, the argument "list_ids" must contain at least one list ID to restrict the query to'
+			if scalar( @$list_ids ) == 0;
+	}
 	
 	# Shortcuts.
 	my $exact_target = $self->exact_target() || confess 'Email::ExactTarget object is not defined';
 	my $verbose = $exact_target->verbose();
 	
-	# Check data.
-	confess 'An arrayref of subscribers to pull list subscriptions for is required.'
-		if !Data::Validate::Type::is_arrayref( $subscribers );
-	confess 'A non-empty arrayref of subscribers to pull list subscriptions for is required.'
-		if scalar( @$subscribers ) == 0;
+	# Prepare the filter on the subscribers' email.
+	my @emails = map { $_->get_attribute('Email Address') } @$subscribers;
+	my $email_filter = \SOAP::Data->value(
+		SOAP::Data->name(
+			Property => 'SubscriberKey',
+		),
+		SOAP::Data->name(
+			SimpleOperator => scalar( @emails ) == 1
+				? 'equals'
+				: 'IN',
+		),
+		SOAP::Data->name(
+			Value => scalar( @emails ) == 1
+				? $emails[0]
+				: @emails,
+		),
+	);
+	
+	# Prepare the list ID filter, if needed.
+	my $list_id_filter;
+	if ( defined( $list_ids ) )
+	{
+		$list_id_filter = \SOAP::Data->value(
+			SOAP::Data->name(
+				Property => 'ListID',
+			),
+			SOAP::Data->name(
+				SimpleOperator => scalar( @$list_ids ) == 1
+					? 'equals'
+					: 'IN',
+			),
+			SOAP::Data->name(
+				Value => scalar( @$list_ids ) == 1
+					? $list_ids->[0]
+					: @$list_ids,
+			),
+		);
+	}
+	
+	# Prepare the complete filter.
+	my $filter;
+	if ( defined( $list_id_filter ) )
+	{
+		# Since we're filtering on list ID and email, then we need to set up a complex
+		# filter to combine them.
+		$filter = SOAP::Data->name(
+			'Filter' => \SOAP::Data->value(
+				SOAP::Data->name(
+					'LeftOperand' => $email_filter,
+				)->attr( { 'xsi:type' => 'SimpleFilterPart' } ),
+				SOAP::Data->name(
+					LogicalOperator => 'AND',
+				),
+				SOAP::Data->name(
+					'RightOperand' => $list_id_filter,
+				)->attr( { 'xsi:type' => 'SimpleFilterPart' } ),
+			),
+		)->attr( { 'xsi:type' => 'ComplexFilterPart' } );
+	}
+	else
+	{
+		# Filter only on email with a simple filter.
+		$filter = SOAP::Data->name(
+			'Filter' => $email_filter,
+		)->attr( { 'xsi:type' => 'SimpleFilterPart' } );
+	}
 	
 	# Prepare SOAP content.
-	my $soap_args = [
+	my $soap_args =
+	[
 		SOAP::Data->name(
 			RetrieveRequest => \SOAP::Data->value(
 				SOAP::Data->name(
@@ -342,22 +430,7 @@ sub pull_list_subscriptions
 				SOAP::Data->name(
 					Properties => qw( ListID SubscriberKey Status ),
 				),
-				SOAP::Data->name(
-					'Filter' => \SOAP::Data->value(
-						SOAP::Data->name(
-							Property => 'SubscriberKey',
-						),
-						SOAP::Data->name(
-							SimpleOperator => 'IN',
-						),
-						SOAP::Data->name(
-							# 'IN' requires at least _two_ values to be passed or it will confess.
-							# Since the webservice deduplicates the values passed, just pass
-							# the first object twice.
-							Value => ( map { $_->get_attribute('Email Address') } ( @$subscribers, $subscribers->[0] ) ),
-						),
-					),
-				)->attr( { 'xsi:type' => 'SimpleFilterPart' } ),
+				$filter,
 			),
 		),
 	];
@@ -375,7 +448,7 @@ sub pull_list_subscriptions
 	confess Dumper( $soap_response->fault() )
 		if defined( $soap_response->fault() );
 	
-	confess "The SOAP status is not 'OK'"
+	confess "The SOAP reply status is '$soap_success', not 'OK'"
 		unless defined( $soap_success ) && ( $soap_success eq 'OK' );
 	
 	# Check the detail of the response for each object, and update accordingly.
@@ -495,7 +568,7 @@ sub delete_permanently
 	confess Dumper( $soap_response->fault() )
 		if defined( $soap_response->fault() );
 	
-	confess 'The SOAP status is not >OK< - ' . Dumper( $soap_response->paramsall() )
+	confess "The SOAP reply status is '$soap_success', not 'OK'"
 		unless defined( $soap_success ) && ( $soap_success eq 'OK' );
 	
 	# Parse the output.

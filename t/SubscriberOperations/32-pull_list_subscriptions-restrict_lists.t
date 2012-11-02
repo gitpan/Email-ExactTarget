@@ -75,10 +75,11 @@ lives_ok(
 	sub
 	{
 		$subscriber_operations->pull_list_subscriptions(
-			$subscribers
+			$subscribers,
+			list_ids => [ $config->{'all_subscribers_list_id'}, $config->{'test_lists'}->[0] ],
 		);
 	},
-	'Retrieve list subscriptions.',
+	'Retrieve list subscriptions, restricting to specific list IDs.',
 );
 
 # Make it easier later to test individual results by accessing the objects.
@@ -124,17 +125,18 @@ subtest(
 	}
 );
 
-# Retrieve the list subscriptions for one of the subscribers. We have to use
-# a different query operator when there's only one subscriber, so we test
-# this special case separately here.
+# Retrieve the list subscriptions for only one list. We have to use a different
+# query operator when there's only one list ID, so we test this special case
+# separately here.
 lives_ok(
 	sub
 	{
 		$subscriber_operations->pull_list_subscriptions(
-			[ $subscribers->[0] ]
+			$subscribers,
+			list_ids => [ $config->{'all_subscribers_list_id'} ],
 		);
 	},
-	'Retrieve list subscriptions for one subscriber only.',
+	'Retrieve list subscriptions, restricting one list ID only.',
 );
 
 
@@ -147,4 +149,4 @@ __DATA__
 #
 # Email	List IDs
 john.q.public@example.com	[default]	[test0]
-john.doe@example.com	[default]	[test1]
+john.doe@example.com	[default]

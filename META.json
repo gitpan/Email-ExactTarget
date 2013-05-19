@@ -13,11 +13,17 @@
       "version" : "2"
    },
    "name" : "Email-ExactTarget",
+   "no_index" : {
+      "package" : [
+         "ExactTargetConfig"
+      ]
+   },
    "prereqs" : {
       "build" : {
          "requires" : {
             "Test::Deep" : "0",
             "Test::Exception" : "0",
+            "Test::FailWarnings" : "0",
             "Test::More" : "0.94",
             "Test::Type" : "0"
          }
@@ -46,21 +52,21 @@
    "provides" : {
       "Email::ExactTarget" : {
          "file" : "lib/Email/ExactTarget.pm",
-         "version" : "v1.6.0"
+         "version" : "v1.6.1"
       },
       "Email::ExactTarget::Subscriber" : {
          "file" : "lib/Email/ExactTarget/Subscriber.pm",
-         "version" : "v1.6.0"
+         "version" : "v1.6.1"
       },
       "Email::ExactTarget::SubscriberOperations" : {
          "file" : "lib/Email/ExactTarget/SubscriberOperations.pm",
-         "version" : "v1.6.0"
+         "version" : "v1.6.1"
       }
    },
    "release_status" : "stable",
    "resources" : {
       "bugtracker" : {
-         "web" : "http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Email-ExactTarget"
+         "web" : "https://github.com/guillaumeaubert/Email-ExactTarget/issues"
       },
       "homepage" : "https://metacpan.org/release/Email-ExactTarget",
       "license" : [
@@ -70,5 +76,5 @@
          "url" : "https://github.com/guillaumeaubert/Email-ExactTarget"
       }
    },
-   "version" : "v1.6.0"
+   "version" : "v1.6.1"
 }

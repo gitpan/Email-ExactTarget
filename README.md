@@ -2,6 +2,7 @@ Email-ExactTarget
 =================
 
 [![Build Status](https://travis-ci.org/guillaumeaubert/Email-ExactTarget.png?branch=master)](https://travis-ci.org/guillaumeaubert/Email-ExactTarget)
+[![Coverage Status](https://coveralls.io/repos/guillaumeaubert/Email-ExactTarget/badge.png?branch=master)](https://coveralls.io/r/guillaumeaubert/Email-ExactTarget?branch=master)
 
 This module allows you to interact with Exact Target, an Email Service
 Provider. It encapsulates all the communications with the API provided by Exact
@@ -51,7 +52,7 @@ You can also look for information at:
 LICENSE AND COPYRIGHT
 ---------------------
 
-Copyright (C) 2009-2013 Guillaume Aubert
+Copyright (C) 2009-2014 Guillaume Aubert
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU General Public License version 3 as published by the Free
